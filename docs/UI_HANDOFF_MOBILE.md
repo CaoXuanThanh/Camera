@@ -1,7 +1,10 @@
 # TÀI LIỆU HƯỚNG DẪN THIẾT KẾ UI/UX MOBILE-FIRST & COMPONENT MAP (VÒNG CHATGPT)
-> **Dự án**: School Camera Access Platform — Bản dự phòng Frontend độc lập  
+> **Dự án**: School Camera Access Platform
+>
 > **Tài liệu**: `docs/UI_HANDOFF_MOBILE.md`  
 > **Mục tiêu**: Định hướng kiến trúc giao diện, luồng trải nghiệm người dùng ưu tiên di động (Mobile-First), bản đồ component và giải pháp kỹ thuật đáp ứng quy mô mở rộng (hàng nghìn bản ghi) để AI tiếp theo (ChatGPT) triển khai thiết kế UI/UX mà không làm hỏng logic nền tảng.
+
+Tài liệu ghi lại phân tích và đề xuất từ baseline trước các concept giao diện. Bản đang mở có thể dùng bố cục khác. Các ghi chú mở rộng ở phần 3 áp dụng cho màn hình quản trị.
 
 ---
 

@@ -1,7 +1,10 @@
 # TÀI LIỆU BÀN GIAO FRONTEND — ANTIGRAVITY (VÒNG 1 + VÒNG 2 + VÒNG 3)
-> **Dự án**: School Camera Access Platform (Bản dự phòng độc lập môn Thiết kế Web)  
+> **Dự án**: School Camera Access Platform
+>
 > **Người thực hiện**: Antigravity Assistant  
 > **Mục tiêu**: Ổn định nền frontend, vá lỗi nhỏ an toàn, kiểm thử thực tế và lập hướng dẫn kỹ thuật chi tiết để chuyển giao cho ChatGPT thực hiện thiết kế UI/UX ở vòng tiếp theo.
+
+Kết quả kiểm thử và vị trí trong mã bên dưới mô tả từng bản tại thời điểm bàn giao. Dùng [smoke test hiện tại](smoke-tests.md) để kiểm tra bản đang mở.
 
 ---
 
@@ -286,4 +289,4 @@ Các cảnh báo CSP thường gặp trong Console **không phải lỗi ứng d
 ### 9.4. Git Baseline
 - Git Root: chính thư mục `FE-developer` để `index.html` nằm ngay gốc repository.
 - File `.gitignore` đã được tạo để loại trừ file rác hệ điều hành, file log, file tạm.
-- Remote đích: `https://github.com/CaoXuanThanh/Camera.git` (đã xác thực trạng thái ban đầu: repo public và hoàn toàn trống).
+- Remote tại thời điểm thiết lập baseline là `https://github.com/CaoXuanThanh/Camera.git`.
