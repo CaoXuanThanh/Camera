@@ -3,37 +3,35 @@
 async function renderParent(main) {
   const h = app.html;
   main.innerHTML = `
-    <div class="screen-heading">
+    <div class="screen-heading parent-heading">
       <h1>Camera trường học</h1>
-      <p>Quyền xem được nhà trường cấp theo lớp của học sinh liên kết.</p>
+      <p>Danh sách camera cập nhật theo lớp của con.</p>
     </div>
-    <div class="parent-layout">
-      <section class="panel parent-camera-panel" aria-labelledby="school-cameras">
-        <div class="section-bar camera-section-bar">
-          <div>
-            <h2 id="school-cameras">Camera được cấp quyền</h2>
-            <p class="small muted" id="camera-count">Đang tải danh sách camera…</p>
-            <p class="small muted" id="parent-access-update" role="status"></p>
-          </div>
-          <label class="camera-search"><span class="sr-only">Tìm camera được cấp quyền</span><input class="field" type="search" id="camera-search" placeholder="Tìm theo tên camera"></label>
+    <section class="panel parent-student-panel" aria-labelledby="linked-students">
+      <h2 id="linked-students">Học sinh liên kết</h2>
+      <ul class="parent-students" hidden></ul>
+      <p id="no-linked-students" class="small muted" hidden>Chưa có học sinh liên kết với tài khoản này.</p>
+    </section>
+    <section class="parent-camera-panel" aria-labelledby="school-cameras">
+      <div class="section-bar camera-section-bar">
+        <div>
+          <h2 id="school-cameras">Camera được cấp quyền</h2>
+          <p class="small muted" id="camera-count">Đang tải danh sách camera…</p>
+          <p class="small muted" id="parent-access-update" role="status"></p>
         </div>
-        <span id="camera-search-status" class="sr-only" role="status"></span>
-        <div class="camera-grid" hidden></div>
-        <p id="no-camera-results" class="empty-panel muted" hidden>Không có camera khớp từ khóa.</p>
-        <div id="parent-empty" class="empty-panel" hidden>
-          <h3>Chưa có camera được cấp quyền</h3><p class="muted"></p>
-        </div>
-        <p id="parent-dashboard-error" class="empty-panel error" role="alert" hidden></p>
-      </section>
-      <aside class="panel parent-student-panel" aria-labelledby="linked-students">
-        <div class="parent-student-heading">
-          <h2 id="linked-students">Học sinh liên kết</h2>
-          <p class="small muted" id="parent-account"></p>
-        </div>
-        <ul class="parent-students" hidden></ul>
-        <p id="no-linked-students" class="small muted" hidden>Chưa có học sinh liên kết với tài khoản này.</p>
-      </aside>
-    </div>`;
+        <label class="camera-search">
+          <span class="sr-only">Tìm camera theo tên, lớp hoặc vị trí</span>
+          <input class="field" type="search" id="camera-search" placeholder="Tìm theo tên, lớp hoặc vị trí">
+        </label>
+      </div>
+      <span id="camera-search-status" class="sr-only" role="status"></span>
+      <div class="camera-grid" hidden></div>
+      <p id="no-camera-results" class="panel empty-panel muted" hidden>Không có camera khớp từ khóa.</p>
+      <div id="parent-empty" class="panel empty-panel" hidden>
+        <h3>Chưa có camera được cấp quyền</h3><p class="muted"></p>
+      </div>
+      <p id="parent-dashboard-error" class="panel empty-panel error" role="alert" hidden></p>
+    </section>`;
 
   const search = main.querySelector("#camera-search");
   const grid = main.querySelector(".camera-grid");
@@ -43,7 +41,6 @@ async function renderParent(main) {
   const accessUpdate = main.querySelector("#parent-access-update");
   const empty = main.querySelector("#parent-empty");
   const dashboardError = main.querySelector("#parent-dashboard-error");
-  const account = main.querySelector("#parent-account");
   const studentList = main.querySelector(".parent-students");
   const noStudents = main.querySelector("#no-linked-students");
   let currentCameras = null;
@@ -57,45 +54,78 @@ async function renderParent(main) {
   }
 
   function applySearch(announce = false) {
-    const rawQuery = search.value.trim().toLocaleLowerCase("vi");
-    const query = normalizeText(rawQuery);
+    const query = normalizeText(search.value);
     const cards = [...grid.querySelectorAll(".feed-card")];
     cards.forEach((card) => {
-      const title = card.querySelector("h3")?.textContent || "";
-      const details = card.querySelector(".feed-details")?.textContent || "";
-      const rawMatch = title.toLocaleLowerCase("vi").includes(rawQuery) || details.toLocaleLowerCase("vi").includes(rawQuery);
-      const normMatch = normalizeText(title).includes(query) || normalizeText(details).includes(query);
-      card.hidden = !rawMatch && !normMatch;
+      const fields = [...card.querySelector(".feed-details").children];
+      card.hidden = !fields.some((field) => normalizeText(field.textContent).includes(query));
+    });
+    grid.querySelectorAll(".camera-group").forEach((group) => {
+      group.hidden = !group.querySelector(".feed-card:not([hidden])");
     });
     const visible = cards.filter((card) => !card.hidden).length;
-    const message = rawQuery ? `${visible} kết quả / ${cards.length} camera` : `${cards.length} camera`;
+    const message = query ? `${visible} kết quả / ${cards.length} camera` : `${cards.length} camera`;
     if (count.textContent !== message) count.textContent = message;
     if (announce && searchStatus.textContent !== message) searchStatus.textContent = message;
     noResults.hidden = !cards.length || visible > 0;
+  }
+
+  function renderCard(camera, available) {
+    const status = camera.enabled ? app.status(available) : "Đã tắt";
+    const action = available ? "Xem camera" : "Xem trạng thái";
+    const hasImage = /^[\w-]+\.(?:jpe?g|png|webp)$/i.test(camera.image ?? "");
+    return `<article class="panel feed-card${available ? "" : " feed-card-unavailable"}">
+        <div class="feed-preview">
+          <span class="camera-icon" aria-hidden="true"></span>
+          ${hasImage ? `<img src="assets/images/${h(camera.image)}" alt="" loading="lazy">
+          <span class="feed-preview-label">Ảnh minh họa</span>` : ""}
+        </div>
+        <div class="feed-details">
+          <h4>${h(camera.name)}</h4>
+          <p class="small muted">${h(camera.location)}</p>
+          ${camera.className ? `<p class="feed-access small">Quyền từ lớp ${h(camera.className)}</p>` : ""}
+        </div>
+        <div class="feed-actions">
+          <span class="badge badge-status badge-${available ? "online" : "offline"}">${status}</span>
+          <a class="button button-secondary" href="#/camera/${encodeURIComponent(camera.id)}" aria-label="${action} · ${h(camera.name)}">
+            ${action}
+          </a>
+        </div>
+      </article>`;
+  }
+
+  function renderGroups(cameras) {
+    const classes = new Map();
+    const shared = { title: "Camera dùng chung", cards: [] };
+    const unavailable = { title: "Tạm thời chưa thể phát", cards: [], unavailable: true };
+
+    for (const camera of cameras) {
+      const available = camera.enabled && camera.connectionStatus === "online";
+      const card = renderCard(camera, available);
+      if (!available) {
+        unavailable.cards.push(card);
+      } else if (camera.classIds.length > 1) {
+        shared.cards.push(card);
+      } else {
+        const key = camera.classIds[0];
+        if (!classes.has(key)) {
+          classes.set(key, { title: camera.className ? `Lớp ${camera.className}` : "Camera được cấp quyền", cards: [] });
+        }
+        classes.get(key).cards.push(card);
+      }
+    }
+    return [...classes.values(), shared, unavailable].filter(({ cards }) => cards.length).map((group, index) => `
+      <section class="camera-group${group.unavailable ? " camera-group-unavailable" : group.cards.length > 1 ? " camera-group-wide" : ""}" aria-labelledby="camera-group-${index}">
+        <h3 class="camera-group-title" id="camera-group-${index}">${h(group.title)}</h3>
+        <div class="camera-group-cards">${group.cards.join("")}</div>
+      </section>`).join("");
   }
 
   function showDashboard({ parent, children, cameras }) {
     const focusedLink = grid.contains(document.activeElement)
       ? document.activeElement.closest("a")
       : null;
-    const cameraMarkup = cameras.map((camera) => {
-      const available = camera.enabled && camera.connectionStatus === "online";
-      const status = camera.enabled ? app.status(available) : "Đã tắt";
-      return `<article class="feed-card">
-        <span class="brand-mark" aria-hidden="true"><span class="camera-icon"></span></span>
-        <div class="feed-details">
-          <h3>${h(camera.name)}</h3>
-          <p class="small muted">${h(camera.location)}</p>
-          <p class="feed-access small">Quyền từ lớp ${h(camera.className)}</p>
-        </div>
-        <div class="feed-actions">
-          <span class="badge badge-status badge-${available ? "online" : "offline"}">${status}</span>
-          <a class="button button-secondary" href="#/camera/${encodeURIComponent(camera.id)}" aria-label="Xem ${h(camera.name)}">
-            ${available ? "Xem camera" : "Xem trạng thái"}
-          </a>
-        </div>
-      </article>`;
-    }).join("");
+    const cameraMarkup = renderGroups(cameras);
     const changed = cameraMarkup !== lastCameraMarkup;
     if (changed) {
       grid.innerHTML = cameraMarkup;
@@ -118,7 +148,6 @@ async function renderParent(main) {
       (retained || search).focus({ preventScroll: true });
     }
 
-    account.textContent = `Tài khoản ${parent.displayName}`;
     const studentMarkup = children.map((child) => `<li class="parent-student">
       <span class="student-initials" aria-hidden="true">${h(app.initials(child.fullName))}</span>
       <div><strong>${h(child.fullName)}</strong>
@@ -155,7 +184,7 @@ async function renderParent(main) {
     lastStudentMarkup = "";
     currentCameras = null;
     for (const element of [grid, noResults, empty, studentList, noStudents]) element.hidden = true;
-    for (const element of [account, count, accessUpdate, searchStatus]) element.textContent = "";
+    for (const element of [count, accessUpdate, searchStatus]) element.textContent = "";
     dashboardError.textContent = error.message || "Không thể tải danh sách camera.";
     dashboardError.hidden = false;
     if (restoreFocus) search.focus({ preventScroll: true });
