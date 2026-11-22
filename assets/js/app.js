@@ -49,11 +49,66 @@ const app = {
       dialog.close();
       await this.render(false);
       this.flash("Đã khôi phục dữ liệu mẫu.");
-      this.root.querySelector("#reset-demo")?.focus();
+      const toggle = this.root.querySelector(".menu-toggle");
+      const resetControl = toggle?.getClientRects().length ? toggle : this.root.querySelector("#reset-demo");
+      resetControl?.focus();
     });
   },
 
+  bindMobileMenu() {
+    const side = this.root.querySelector(".portal-side");
+    const menu = this.root.querySelector("#portal-menu");
+    const toggle = this.root.querySelector(".menu-toggle");
+    const body = menu.querySelector(".portal-menu-body");
+    const mobile = window.matchMedia("(max-width: 900px)");
+    for (const element of side.querySelectorAll(".portal-role, .portal-nav, .portal-side-bottom")) {
+      const copy = element.cloneNode(true);
+      copy.querySelectorAll("[id]").forEach((control) => control.removeAttribute("id"));
+      body.append(copy);
+    }
+
+    function closeMenu(restoreFocus = true) {
+      if (!menu.open) return;
+      menu.close();
+      document.documentElement.classList.remove("portal-menu-open");
+      toggle.setAttribute("aria-expanded", "false");
+      if (restoreFocus) toggle.focus({ preventScroll: true });
+    }
+
+    function handleResize() {
+      if (!mobile.matches) {
+        const desktopTarget = side.querySelector('[aria-current="page"]') || side.querySelector(".brand");
+        if (menu.open) {
+          closeMenu(false);
+          desktopTarget.focus({ preventScroll: true });
+        }
+      }
+    }
+
+    toggle.addEventListener("click", () => {
+      menu.showModal();
+      document.documentElement.classList.add("portal-menu-open");
+      toggle.setAttribute("aria-expanded", "true");
+    });
+    menu.querySelector(".menu-close").addEventListener("click", () => closeMenu());
+    menu.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeMenu();
+    });
+    menu.addEventListener("click", (event) => {
+      if (event.target === menu || event.target.closest("a[href]")) closeMenu();
+    });
+    mobile.addEventListener("change", handleResize);
+    this.stopMobileMenu = () => {
+      closeMenu(false);
+      mobile.removeEventListener("change", handleResize);
+    };
+    return closeMenu;
+  },
+
   async render(moveFocus = true) {
+    this.stopMobileMenu?.();
+    this.stopMobileMenu = null;
     this.stopViewer?.();
     this.stopViewer = null;
     this.stopParentDashboard?.();
@@ -109,7 +164,7 @@ const app = {
     this.root.querySelector("[data-role]").textContent = admin ? "Quản trị nhà trường" : "Cổng phụ huynh";
     const locationLabel = this.root.querySelector("[data-location]");
     locationLabel.textContent = locationTitle;
-    locationLabel.hidden = area === "phu-huynh";
+    if (area === "phu-huynh") locationLabel.textContent = "Cổng phụ huynh";
     this.root.querySelector("[data-account]").textContent = account;
     const avatar = this.root.querySelector("#change-role");
     avatar.textContent = this.initials(account);
@@ -122,14 +177,42 @@ const app = {
       </a>`).join("");
     this.root.querySelector(".portal-side-bottom").innerHTML = `
       <a class="portal-link" href="#/ho-so" ${area === "ho-so" ? 'aria-current="page"' : ""}>Hồ sơ và cài đặt</a>
-      <button class="portal-link role-link" type="button" id="side-role">Đăng xuất</button>
-      ${admin ? '<button class="portal-link role-link" type="button" id="reset-demo">Khôi phục dữ liệu</button>' : ""}
+      <button class="portal-link role-link" type="button" id="side-role" data-portal-action="logout">Đăng xuất</button>
+      ${admin ? '<button class="portal-link role-link" type="button" id="reset-demo" data-portal-action="reset">Khôi phục dữ liệu</button>' : ""}
     `;
-    this.root.querySelector("#side-role").addEventListener("click", async () => {
-      await service.logout();
-      location.hash = "/";
-    });
-    this.root.querySelector("#reset-demo")?.addEventListener("click", () => this.confirmReset());
+    const closeMenu = this.bindMobileMenu();
+    for (const button of this.root.querySelectorAll('[data-portal-action="logout"]')) {
+      button.addEventListener("click", async () => {
+        closeMenu();
+        await service.logout();
+        clearTimeout(this.flashTimer);
+        this.notice.textContent = "";
+        location.hash = "/";
+      });
+    }
+    for (const button of this.root.querySelectorAll('[data-portal-action="reset"]')) {
+      button.addEventListener("click", () => {
+        closeMenu();
+        this.confirmReset();
+      });
+    }
+
+    if (!admin && (area === "camera" || area === "ho-so")) {
+      const portal = this.root.querySelector(".portal");
+      portal.classList.add("parent-flow");
+      const header = portal.querySelector(".portal-top");
+      const brand = portal.querySelector(".portal-side .brand");
+      const wordmark = document.createElement("span");
+      wordmark.textContent = brand.textContent.trim();
+      brand.replaceChildren(brand.querySelector(".brand-mark"), wordmark);
+      const identity = document.createElement("div");
+      identity.className = "parent-identity";
+      identity.append(brand, locationLabel);
+      header.prepend(identity);
+      if (area === "ho-so") avatar.hidden = true;
+      else avatar.textContent = "Hồ sơ";
+      header.querySelector(".portal-session").append(portal.querySelector("#side-role"));
+    }
 
     const main = this.root.querySelector("#main-content");
     this.root.querySelector("#skip-content").addEventListener("click", () => main.focus());

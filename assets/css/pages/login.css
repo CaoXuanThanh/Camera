@@ -1,45 +1,44 @@
-﻿.login-page { background: #f8faf7; }
+﻿.login-page { background: var(--canvas); }
 .login-shell {
+  --login-image: url("../../images/hallway.jpg");
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
   min-height: 100svh;
+  max-width: 1320px;
+  margin-inline: auto;
+  padding: clamp(.9rem, 2vw, 1.55rem) clamp(1rem, 2.3vw, 2rem);
 }
-.login-photo {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.35rem;
-  min-height: 560px;
-  padding: clamp(1.5rem, 5vw, 4.5rem);
-  background:
-    linear-gradient(155deg, #081c1aeb 2%, #112e25a3 45%, #112b23dc 100%),
-    url("../../images/hallway.jpg") 50% 53% / cover;
-  color: white;
+.login-side {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(1.35rem, 3vw, 2.35rem);
+  width: min(100%, 530px);
+  margin-inline: auto;
+  padding: clamp(.75rem, 2vw, 1.5rem) clamp(1rem, 4vw, 3rem);
 }
-.login-photo .brand { color: white; }
-.login-photo .brand-mark { border: 1px solid #91c9af75; background: #c0ebd5; color: #12362f; }
-.photo-copy { margin-top: auto; }
-.photo-copy h1 { max-width: 14ch; font-size: clamp(2.85rem, 6.4vw, 5.9rem); }
-.photo-copy p { margin-top: .8rem; color: #e2f4e6; font-size: clamp(1rem, 1.6vw, 1.25rem); }
-.photo-kicker { padding: .35rem .65rem; border: 1px solid #bce1c66b; border-radius: 6px; background: #172d26a1; color: #e5f5e7; font-size: .875rem; }
-.login-side { display: grid; align-content: center; justify-items: center; gap: 1.7rem; padding: clamp(1.25rem, 4vw, 3rem); }
-.login-content { width: min(100%, 424px); padding: clamp(1rem, 3vw, 2rem); border: 1px solid var(--line); border-radius: 22px; background: white; box-shadow: 0 22px 60px #253d2c12; }
-.login-content h2 { margin: .55rem 0 .25rem; font-size: clamp(2rem, 3.1vw, 2.7rem); }
-.login-content form { display: grid; gap: .8rem; margin-top: 1.4rem; }
-.login-field { display: grid; gap: .3rem; }
+.login-brand { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
+.login-content { align-self: center; }
+.login-content h1 { font-family: Cambria, Georgia, serif; font-size: clamp(2.15rem, 4vw, 3.35rem); font-weight: 600; letter-spacing: -.025em; }
+.login-intro { max-width: 38ch; margin-top: .65rem; }
+.login-content form { display: grid; gap: .95rem; margin-top: 1.5rem; }
+.login-field { display: grid; gap: .32rem; }
 .login-field label { font-size: .875rem; font-weight: 700; }
-.login-content .login-submit { margin-top: .2rem; min-height: 48px; }
-.login-accounts { margin-top: 1rem; padding-top: .85rem; border-top: 1px solid var(--line); }
-.login-accounts summary { color: var(--accent-strong); font-size: .9rem; font-weight: 700; cursor: pointer; }
-.login-accounts p { margin-block: .5rem; }
-.login-side > p { max-width: 370px; text-align: center; }
+.login-content .login-submit { margin-top: .15rem; min-height: 48px; }
+.login-content .error:not(:empty) { padding: .65rem .75rem; border-radius: 7px; background: #fbf0ef; }
+.login-accounts { margin-top: .95rem; border-block: 1px solid var(--line); }
+.login-accounts summary { min-height: var(--control-height); padding: .7rem .25rem; color: var(--accent-strong); font-size: .9rem; font-weight: 700; cursor: pointer; }
+.login-accounts p { margin-bottom: .5rem; }
+.login-accounts select { margin-bottom: .7rem; }
+.login-note { border-top: 1px solid var(--line); padding-top: .85rem; text-wrap: pretty; }
+.login-note p + p { margin-top: .15rem; }
+.login-photo {
+  border-radius: 12px;
+  background: var(--accent-soft) var(--login-image) center / cover no-repeat;
+}
 
 @media (max-width: 760px) {
-  .login-shell { grid-template-columns: minmax(0, 1fr); }
-  .login-photo { min-height: 235px; gap: .7rem; }
-  .photo-copy h1 { max-width: none; font-size: clamp(2.25rem, 7vw, 3.5rem); }
-  .photo-copy h1 br { display: none; }
-  .photo-copy p { margin-top: .45rem; }
-  .login-side { gap: 1rem; }
+  .login-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 1rem; padding: 0 0 1rem; }
+  .login-side { grid-template-rows: auto auto auto; gap: 1.35rem; padding: 1rem var(--page-gutter) 0; }
+  .login-content { margin-top: .6rem; }
+  .login-photo { width: min(calc(100% - 2 * var(--page-gutter)), 498px); min-height: 110px; max-height: 300px; margin-inline: auto; }
 }
