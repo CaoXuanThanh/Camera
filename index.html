@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self' blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Camera Access</title>
+  <!-- FAVICON: Chưa có file favicon trong dự án. Trình duyệt sẽ 404 /favicon.ico (không phải lỗi CSP).
+       Khi có file icon: thêm <link rel="icon" href="assets/images/favicon.png"> và cập nhật img-src nếu cần.
+       Hiện tại dùng data URI rỗng để tắt 404 request mặc định của trình duyệt. -->
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="assets/css/global.css">
+  <link rel="stylesheet" href="assets/css/pages/login.css">
+  <link rel="stylesheet" href="assets/css/portal.css">
+  <script defer src="assets/js/mock-data.js"></script>
+  <script defer src="assets/js/camera-access.js"></script>
+  <script defer src="assets/js/service.js"></script>
+  <script defer src="assets/js/app.js"></script>
+  <script defer src="assets/js/pages/login.js"></script>
+  <script defer src="assets/js/pages/parent-dashboard.js"></script>
+  <script defer src="assets/js/pages/camera-viewer.js"></script>
+  <script defer src="assets/js/pages/admin-access.js"></script>
+  <script defer src="assets/js/pages/profile.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <p id="app-notice" class="app-notice" role="status"></p>
+  <dialog id="app-dialog" aria-labelledby="dialog-title"></dialog>
+  <noscript><p class="empty-state">Hãy bật JavaScript trong trình duyệt để chạy Camera Access.</p></noscript>
+
+  <template id="login-template">
+    <main class="login-shell">
+      <div class="login-photo">
+        <a class="brand" href="#/">
+          <span class="brand-mark" aria-hidden="true"><span class="camera-icon"></span></span>
+          Camera Access
+        </a>
+        <div class="photo-copy">
+          <h1>Cổng camera <br>học đường</h1>
+          <p>Quyền xem tự động theo lớp của học sinh.</p>
+        </div>
+        <!-- photo-kicker: nhãn ảnh nền đã ẩn theo yêu cầu dọn dẹp UI.
+             Ảnh nền hiện tại: assets/images/hallway.jpg (khai báo tại assets/css/pages/login.css dòng 17, selector .login-photo).
+             Để thay ảnh: đổi đường dẫn url("../../images/hallway.jpg") trong .login-photo { background: ... }.
+             Nếu muốn hiển thị lại nhãn, bỏ comment thẻ span bên dưới. -->
+        <!-- <span class="photo-kicker">Hành lang khu A · Ảnh mẫu</span> -->
+      </div>
+      <div class="login-side">
+        <section class="login-content" aria-labelledby="login-title">
+          <span class="badge">Phiên demo</span>
+          <h2 id="login-title">Đăng nhập</h2>
+          <p class="muted">Dùng tài khoản mẫu phụ huynh hoặc quản trị.</p>
+          <form id="login-form">
+            <div class="login-field">
+              <label for="username">Tên đăng nhập</label>
+              <input class="field" id="username" name="username" autocomplete="username" required>
+            </div>
+            <div class="login-field">
+              <label for="password">Mật khẩu</label>
+              <input class="field" id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <p id="login-error" class="error" role="alert"></p>
+            <button class="button login-submit" type="submit">Đăng nhập</button>
+          </form>
+          <details class="login-accounts"><summary>Tài khoản dùng thử</summary>
+            <p class="small muted">Mật khẩu mẫu <code>CameraDemo26</code></p>
+            <label class="sr-only" for="demo-account">Chọn hồ sơ mẫu để điền tên đăng nhập</label>
+            <select class="field field-select" id="demo-account"><option value="">Chọn để điền tên đăng nhập</option></select>
+          </details>
+        </section>
+        <p class="muted small">Hồ sơ và hình ảnh trong phiên này là dữ liệu mẫu.</p>
+      </div>
+    </main>
+  </template>
+
+  <template id="portal-template">
+    <div class="portal">
+      <button class="button skip-link" id="skip-content" type="button">Đến nội dung chính</button>
+      <aside class="portal-side">
+        <a class="brand" href="#/" aria-label="Camera Access, trang chọn tài khoản">
+          <span class="brand-mark" aria-hidden="true"><span class="camera-icon"></span></span>
+          Camera Access
+        </a>
+        <p class="portal-role" data-role></p>
+        <nav class="portal-nav" aria-label="Điều hướng chính"></nav>
+        <div class="portal-side-bottom"></div>
+      </aside>
+      <div class="portal-content">
+        <header class="portal-top">
+          <span class="portal-location" data-location></span>
+          <div class="portal-session">
+            <span class="badge">Demo</span>
+            <span class="session-name" data-account></span>
+            <button class="account-avatar" type="button" id="change-role" title="Đổi vai trò demo"></button>
+          </div>
+        </header>
+        <main class="portal-main" id="main-content" tabindex="-1"></main>
+      </div>
+    </div>
+  </template>
+</body>
+</html>
