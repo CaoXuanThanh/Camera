@@ -15,6 +15,8 @@ desktop.ini
 *.tmp
 temp-*
 *.bak
+/dist/
+/test-results/
 
 # Dependencies (dự án Vanilla JS không dùng npm, đề phòng thêm nhầm)
 node_modules/

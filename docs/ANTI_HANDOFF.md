@@ -182,14 +182,7 @@ Thứ tự ưu tiên triển khai làm đẹp giao diện:
 ### 8.2. Favicon — Trạng thái và hướng dẫn thay thế
 
 > [!NOTE]
-> **Hiện tại**: Không có file `.ico` / `.png` favicon trong toàn bộ `FE-developer/`. Trình duyệt mặc định yêu cầu `/favicon.ico` và nhận 404 — đây không phải lỗi CSP, chỉ là network 404 không ảnh hưởng chức năng.
->
-> **Fix tạm thời đã áp dụng**: `<link rel="icon" href="data:,">` trong `<head>` → triệt tiêu request 404.
->
-> **Khi muốn dùng icon thật**:
-> 1. Lưu file icon vào `assets/images/favicon.png` (hoặc `.ico`).
-> 2. Thay dòng `<link rel="icon" href="data:,">` thành `<link rel="icon" href="assets/images/favicon.png">`.
-> 3. CSP `img-src 'self'` không áp dụng cho favicon (trình duyệt xử lý riêng) — không cần sửa CSP.
+> Ở vòng 2, favicon `data:,` được dùng để xử lý request `/favicon.ico`. Engineering QA đã tái hiện cảnh báo `img-src 'self'` từ chính URL `data:,`. Bản hiện tại dùng [favicon SVG local](../assets/images/favicon.svg) với đường dẫn tương đối và giữ nguyên CSP.
 
 ### 8.3. CSP — Phân tích cảnh báo Console
 
@@ -199,7 +192,7 @@ Các cảnh báo CSP thường gặp trong Console **không phải lỗi ứng d
 | --- | --- | --- | --- |
 | **VS Code Live Server** | Tooling | Live Server inject websocket/script reload từ `127.0.0.1:XXXX`; bị block bởi `script-src 'self'` và `connect-src 'none'` | Bỏ qua — chỉ xảy ra khi dùng Live Server extension, không ảnh hưởng file thật |
 | **Chrome/Edge DevTools** | Tooling | DevTools đôi khi fetch source map hoặc extension resource; bị block bởi `connect-src 'none'` | Bỏ qua — không phải lỗi app |
-| **Favicon 404** | Network | Trình duyệt tự request `/favicon.ico`; đây là **404 không phải CSP violation** | Đã tắt bằng `data:,` link |
+| **Favicon** | App | Request `/favicon.ico` ở bản cũ trả 404. Đường dẫn `data:,` sau đó bị Chrome chặn theo `img-src 'self'` | Đã dùng SVG cùng origin |
 | **Source-panel links** (đã xóa) | App (đã vá) | Các link HTTPS `wvanners.github.io`, `172.16.xxx`, `devstreaming.apple.com` trong source-panel bị block bởi `connect-src 'none'` khi click | Đã xóa toàn bộ source-panel trong Vòng 2 |
 | **Inline style attribute** | App | CSP `style-src 'self'` block thuộc tính `style="..."` trực tiếp trên element | Không có inline style trong code chính; chỉ cần lưu ý khi ChatGPT thêm markup mới |
 

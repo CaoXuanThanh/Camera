@@ -447,7 +447,7 @@
 .account-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .account-fields { display: grid; gap: .65rem; margin-bottom: .95rem; }
 .account-search { width: min(100%, 310px); }
-.account-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .9rem; }
+.list-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .9rem; }
 .record-picker { display: grid; min-width: 0; gap: .3rem; }
 .record-picker label { font-size: .875rem; font-weight: 700; }
 .picker-current { padding: .35rem .5rem; border-radius: 6px; background: var(--canvas); overflow-wrap: anywhere; }

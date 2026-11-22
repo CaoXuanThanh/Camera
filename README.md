@@ -6,10 +6,10 @@ Camera Access là frontend dành cho phụ huynh xem camera được cấp theo 
 
 Mở [index.html](index.html) bằng Chrome hoặc Edge. Ứng dụng nạp CSS, JavaScript, ảnh và video trực tiếp từ thư mục mã nguồn.
 
-Để kiểm tra cập nhật giữa nhiều tab, mở cùng một địa chỉ trên máy chủ tĩnh. Nếu có Python 3, chạy lệnh sau tại thư mục chứa `index.html`, rồi mở `http://127.0.0.1:5500/`.
+Để kiểm tra cập nhật giữa nhiều tab, mở cùng địa chỉ HTTP local. Với Node.js, chạy lệnh sau tại thư mục chứa `index.html`, rồi mở `http://127.0.0.1:5500/`.
 
 ```sh
-python -m http.server 5500 --bind 127.0.0.1
+node tools/preview.cjs
 ```
 
 | Tài khoản | Luồng kiểm tra |
@@ -41,6 +41,12 @@ Khi tích hợp dữ liệu thật, dùng hợp đồng service làm điểm tha
 Trang chính khai báo CSP cho tài nguyên local và giữ script khỏi chạy inline. [Tài liệu CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP)
 
 ## Kiểm thử và bảo trì
+
+```sh
+node --test tests/unit.test.cjs tests/browser.test.cjs
+```
+
+Bộ kiểm thử chạy với Node.js 22 và Chrome. [Cách chạy từ clone sạch, cấu hình CI và gói Pages](docs/release-readiness.md)
 
 - [Smoke test đăng nhập, phân quyền và Viewer](docs/smoke-tests.md)
 - [Bàn giao kỹ thuật và kết quả QA theo từng vòng](docs/ANTI_HANDOFF.md)

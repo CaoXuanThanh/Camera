@@ -404,6 +404,42 @@ function renderAccessReport({ parent, camera, decision, studentEvidence, canPlay
     </div>`;
 }
 
+function pagerMarkup(id, label) {
+  return `<nav class="list-pages" id="${id}-pages" aria-label="${label}" hidden>
+    <button class="button button-secondary" type="button" id="${id}-prev">Trang trước</button>
+    <span class="small muted" id="${id}-page" role="status"></span>
+    <button class="button button-secondary" type="button" id="${id}-next">Trang sau</button>
+  </nav>`;
+}
+
+function bindPager(main, id, redraw, pageSize = 16) {
+  const nav = main.querySelector("#" + id + "-pages");
+  const previous = nav.querySelector("#" + id + "-prev");
+  const next = nav.querySelector("#" + id + "-next");
+  const status = nav.querySelector("#" + id + "-page");
+  let page = 0;
+  for (const [button, alternate, offset] of [[previous, next, -1], [next, previous, 1]]) {
+    button.addEventListener("click", () => {
+      page += offset;
+      redraw();
+      if (button.disabled) alternate.focus();
+    });
+  }
+  return {
+    get page() { return page; },
+    select(index = 0) { page = index; },
+    rows(items) {
+      const total = Math.ceil(items.length / pageSize);
+      page = Math.max(0, Math.min(page, total - 1));
+      nav.hidden = total < 2;
+      previous.disabled = page === 0;
+      next.disabled = page >= total - 1;
+      status.textContent = total ? `${page + 1} / ${total}` : "";
+      return items.slice(page * pageSize, (page + 1) * pageSize);
+    }
+  };
+}
+
 function renderAdminStudents(main, data) {
   const h = app.html;
   main.innerHTML = `
@@ -422,12 +458,14 @@ function renderAdminStudents(main, data) {
         <label><span>Lớp</span><select class="field field-select" id="record-filter"><option value="">Tất cả lớp</option>${classOptions(data.classes)}</select></label>
       </div>
       <div id="record-list"></div>
+      ${pagerMarkup("record", "Trang học sinh")}
     </section>`;
 
   const search = main.querySelector("#record-search");
   const filter = main.querySelector("#record-filter");
   const tiles = [...main.querySelectorAll(".class-tile")];
   const list = main.querySelector("#record-list");
+  const pager = bindPager(main, "record", update, 24);
   const parentsByStudent = new Map();
   for (const parent of data.parents) {
     for (const id of parent.studentIds) {
@@ -446,10 +484,11 @@ function renderAdminStudents(main, data) {
     );
     tiles.forEach((tile) => tile.setAttribute("aria-pressed", String(tile.dataset.class === filter.value)));
     main.querySelector("#record-count").textContent = `${students.length} học sinh`;
+    const visible = pager.rows(students);
     list.innerHTML = students.length ? `
       <table class="record-table">
         <thead><tr><th scope="col">Học sinh</th><th scope="col">Lớp</th><th scope="col">Phụ huynh</th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
-        <tbody>${students.map((student) => `
+        <tbody>${visible.map((student) => `
           <tr>
             <th scope="row"><strong>${h(student.name)}</strong><span class="small muted record-meta">${h(student.id)}</span></th>
             <td data-label="Lớp">${h(student.classId || "Chưa xếp lớp")}</td>
@@ -461,14 +500,15 @@ function renderAdminStudents(main, data) {
   }
   list.addEventListener("click", (event) => {
     const button = event.target.closest("[data-edit-student]");
-    if (button) editStudent(data, button.dataset.editStudent, { search: search.value, filter: filter.value });
+    if (button) editStudent(data, button.dataset.editStudent, { search: search.value, filter: filter.value, page: pager.page });
   });
   tiles.forEach((tile) => tile.addEventListener("click", () => {
     filter.value = filter.value === tile.dataset.class ? "" : tile.dataset.class;
+    pager.select();
     update();
   }));
-  search.addEventListener("input", update);
-  filter.addEventListener("change", update);
+  search.addEventListener("input", () => { pager.select(); update(); });
+  filter.addEventListener("change", (event) => { pager.select(event.detail); update(); });
   update();
 }
 
@@ -507,6 +547,7 @@ function renderAdminCameras(main, data) {
         </select></label>
       </div>
       <div id="record-list"></div>
+      ${pagerMarkup("record", "Trang camera")}
     </section>`;
   // Khối "Nguồn để thử tích hợp" (links WVCams / NPS / Apple HLS) đã được loại bỏ khỏi giao diện theo yêu cầu dọn dẹp UI.
   // Nếu cần khôi phục cho buổi demo tích hợp, thêm lại section.source-panel vào innerHTML ở trên,
@@ -514,6 +555,7 @@ function renderAdminCameras(main, data) {
   const search = main.querySelector("#record-search");
   const filter = main.querySelector("#record-filter");
   const list = main.querySelector("#record-list");
+  const pager = bindPager(main, "record", update, 24);
   function update() {
     const query = adminSearch(search.value);
     const cameras = data.cameras.filter((camera) =>
@@ -521,9 +563,10 @@ function renderAdminCameras(main, data) {
       adminSearch([camera.name, camera.id, camera.location, ...camera.classIds].join(" ")).includes(query)
     );
     main.querySelector("#record-count").textContent = `${cameras.length} camera`;
-    list.innerHTML = cameras.length ? `<div class="device-list">${cameras.map((camera) => `
+    const visible = pager.rows(cameras);
+    list.innerHTML = cameras.length ? `<div class="device-list">${visible.map((camera) => `
       <article class="device-row">
-        <img src="assets/images/${h(camera.image)}" alt="" width="724" height="724">
+        <img src="assets/images/${h(camera.image)}" alt="" width="724" height="724" loading="lazy">
         <div><h3>${h(camera.name)}</h3><p class="small muted">${h(camera.location)}</p></div>
         <div class="device-classes">${camera.classIds.length
           ? camera.classIds.map((id) => `<span class="badge">Lớp ${h(id)}</span>`).join("")
@@ -534,10 +577,10 @@ function renderAdminCameras(main, data) {
   }
   list.addEventListener("click", (event) => {
     const button = event.target.closest("[data-edit-camera]");
-    if (button) editCamera(data, button.dataset.editCamera, { search: search.value, filter: filter.value });
+    if (button) editCamera(data, button.dataset.editCamera, { search: search.value, filter: filter.value, page: pager.page });
   });
-  search.addEventListener("input", update);
-  filter.addEventListener("change", update);
+  search.addEventListener("input", () => { pager.select(); update(); });
+  filter.addEventListener("change", (event) => { pager.select(event.detail); update(); });
   update();
 }
 
@@ -576,20 +619,12 @@ function renderAdminAccounts(main, data) {
         <label class="account-search"><span class="sr-only">Tìm tài khoản</span><input class="field" id="account-search" type="search" placeholder="Tìm theo tên, email hoặc mã"></label>
       </div>
       <div class="accounts-list"></div>
-      <nav class="account-pages" aria-label="Trang tài khoản" hidden>
-        <button class="button button-secondary" type="button" id="account-prev">Trang trước</button>
-        <span class="small muted" id="account-page" role="status"></span>
-        <button class="button button-secondary" type="button" id="account-next">Trang sau</button>
-      </nav>
+      ${pagerMarkup("account", "Trang tài khoản")}
     </section>`;
   const search = main.querySelector("#account-search");
   const list = main.querySelector(".accounts-list");
   const count = main.querySelector("#account-count");
-  const pages = main.querySelector(".account-pages");
-  const previous = main.querySelector("#account-prev");
-  const next = main.querySelector("#account-next");
-  const pageSize = 16;
-  let page = 0;
+  const pager = bindPager(main, "account", update);
 
   function update() {
     const terms = adminSearch(search.value).split(/\s+/);
@@ -597,18 +632,13 @@ function renderAdminAccounts(main, data) {
       const text = adminSearch([parent.name, parent.id, parent.username, parent.email].join(" "));
       return terms.every((term) => text.includes(term));
     });
-    const pageCount = Math.ceil(parents.length / pageSize);
-    page = Math.max(0, Math.min(page, pageCount - 1));
     count.textContent = `${parents.length} tài khoản`;
-    pages.hidden = pageCount < 2;
-    previous.disabled = page === 0;
-    next.disabled = page >= pageCount - 1;
-    main.querySelector("#account-page").textContent = `${page + 1} / ${pageCount}`;
+    const visible = pager.rows(parents);
     const summaries = new Map(data.parentSummaries.map((view) => [view.parent.id, view]));
     list.innerHTML = parents.length ? `
       <table class="record-table account-table">
         <thead><tr><th scope="col">Tài khoản</th><th scope="col">Học sinh liên kết</th><th scope="col">Quyền xem</th><th scope="col">Thao tác</th></tr></thead>
-        <tbody>${parents.slice(page * pageSize, (page + 1) * pageSize).map(row).join("")}</tbody>
+        <tbody>${visible.map(row).join("")}</tbody>
       </table>` : '<p class="empty-panel muted">Không tìm thấy tài khoản phù hợp.</p>';
 
     function row(parent) {
@@ -641,12 +671,7 @@ function renderAdminAccounts(main, data) {
     (control || search).focus();
   }
 
-  search.addEventListener("input", () => {
-    page = 0;
-    update();
-  });
-  previous.addEventListener("click", () => { page--; update(); if (previous.disabled) next.focus(); });
-  next.addEventListener("click", () => { page++; update(); if (next.disabled) previous.focus(); });
+  search.addEventListener("input", () => { pager.select(); update(); });
   main.querySelector("#add-account").addEventListener("click", () => editParentAccount(data, null, (id) => refresh("[data-edit-account]", id)));
   list.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit-account]");
@@ -791,7 +816,7 @@ function connectAdminEditor(dialog, change, message, filters, actionSelector) {
     const filter = app.root.querySelector("#record-filter");
     search.value = filters.search;
     filter.value = filters.filter;
-    filter.dispatchEvent(new Event("change"));
+    filter.dispatchEvent(new CustomEvent("change", { detail: filters.page }));
     (app.root.querySelector(actionSelector) || search).focus();
     app.flash(message);
   });
