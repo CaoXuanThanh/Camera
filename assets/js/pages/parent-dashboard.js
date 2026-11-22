@@ -2,36 +2,39 @@
 
 async function renderParent(main) {
   const h = app.html;
+  main.classList.add("concept-c");
   main.innerHTML = `
     <div class="screen-heading parent-heading">
       <h1>Camera trường học</h1>
       <p>Danh sách camera cập nhật theo lớp của con.</p>
     </div>
-    <section class="panel parent-student-panel" aria-labelledby="linked-students">
-      <h2 id="linked-students">Học sinh liên kết</h2>
-      <ul class="parent-students" hidden></ul>
-      <p id="no-linked-students" class="small muted" hidden>Chưa có học sinh liên kết với tài khoản này.</p>
-    </section>
-    <section class="parent-camera-panel" aria-labelledby="school-cameras">
-      <div class="section-bar camera-section-bar">
-        <div>
-          <h2 id="school-cameras">Camera được cấp quyền</h2>
-          <p class="small muted" id="camera-count">Đang tải danh sách camera…</p>
-          <p class="small muted" id="parent-access-update" role="status"></p>
+    <div class="parent-gallery">
+      <aside class="parent-student-panel" aria-labelledby="linked-students">
+        <h2 id="linked-students">Học sinh liên kết</h2>
+        <ul class="parent-students" hidden></ul>
+        <p id="no-linked-students" class="small muted" hidden>Chưa có học sinh liên kết với tài khoản này.</p>
+      </aside>
+      <section class="parent-camera-panel" aria-labelledby="school-cameras">
+        <div class="section-bar camera-section-bar">
+          <div>
+            <h2 id="school-cameras">Camera được cấp quyền</h2>
+            <p class="small muted" id="camera-count">Đang tải danh sách camera…</p>
+            <p class="small muted" id="parent-access-update" role="status"></p>
+          </div>
+          <label class="camera-search">
+            <span class="sr-only">Tìm camera theo tên, lớp hoặc vị trí</span>
+            <input class="field" type="search" id="camera-search" placeholder="Tìm theo tên, lớp hoặc vị trí">
+          </label>
         </div>
-        <label class="camera-search">
-          <span class="sr-only">Tìm camera theo tên, lớp hoặc vị trí</span>
-          <input class="field" type="search" id="camera-search" placeholder="Tìm theo tên, lớp hoặc vị trí">
-        </label>
-      </div>
-      <span id="camera-search-status" class="sr-only" role="status"></span>
-      <div class="camera-grid" hidden></div>
-      <p id="no-camera-results" class="panel empty-panel muted" hidden>Không có camera khớp từ khóa.</p>
-      <div id="parent-empty" class="panel empty-panel" hidden>
-        <h3>Chưa có camera được cấp quyền</h3><p class="muted"></p>
-      </div>
-      <p id="parent-dashboard-error" class="panel empty-panel error" role="alert" hidden></p>
-    </section>`;
+        <span id="camera-search-status" class="sr-only" role="status"></span>
+        <div class="camera-grid" hidden></div>
+        <p id="no-camera-results" class="panel empty-panel muted" hidden>Không có camera khớp từ khóa.</p>
+        <div id="parent-empty" class="panel empty-panel" hidden>
+          <h3>Chưa có camera được cấp quyền</h3><p class="muted"></p>
+        </div>
+        <p id="parent-dashboard-error" class="panel empty-panel error" role="alert" hidden></p>
+      </section>
+    </div>`;
 
   const search = main.querySelector("#camera-search");
   const grid = main.querySelector(".camera-grid");
@@ -74,7 +77,7 @@ async function renderParent(main) {
     const status = camera.enabled ? app.status(available) : "Đã tắt";
     const action = available ? "Xem camera" : "Xem trạng thái";
     const hasImage = /^[\w-]+\.(?:jpe?g|png|webp)$/i.test(camera.image ?? "");
-    return `<article class="panel feed-card${available ? "" : " feed-card-unavailable"}">
+    return `<article class="feed-card${available ? "" : " feed-card-unavailable"}">
         <div class="feed-preview">
           <span class="camera-icon" aria-hidden="true"></span>
           ${hasImage ? `<img src="assets/images/${h(camera.image)}" alt="" loading="lazy">
@@ -95,29 +98,19 @@ async function renderParent(main) {
   }
 
   function renderGroups(cameras) {
-    const classes = new Map();
-    const shared = { title: "Camera dùng chung", cards: [] };
-    const unavailable = { title: "Tạm thời chưa thể phát", cards: [], unavailable: true };
-
+    const classCards = [];
+    const sharedCards = [];
     for (const camera of cameras) {
       const available = camera.enabled && camera.connectionStatus === "online";
-      const card = renderCard(camera, available);
-      if (!available) {
-        unavailable.cards.push(card);
-      } else if (camera.classIds.length > 1) {
-        shared.cards.push(card);
-      } else {
-        const key = camera.classIds[0];
-        if (!classes.has(key)) {
-          classes.set(key, { title: camera.className ? `Lớp ${camera.className}` : "Camera được cấp quyền", cards: [] });
-        }
-        classes.get(key).cards.push(card);
-      }
+      (camera.classIds.length > 1 ? sharedCards : classCards).push(renderCard(camera, available));
     }
-    return [...classes.values(), shared, unavailable].filter(({ cards }) => cards.length).map((group, index) => `
-      <section class="camera-group${group.unavailable ? " camera-group-unavailable" : group.cards.length > 1 ? " camera-group-wide" : ""}" aria-labelledby="camera-group-${index}">
-        <h3 class="camera-group-title" id="camera-group-${index}">${h(group.title)}</h3>
-        <div class="camera-group-cards">${group.cards.join("")}</div>
+    return [
+      { title: "Theo lớp", cards: classCards },
+      { title: "Dùng chung", cards: sharedCards }
+    ].filter(({ cards }) => cards.length).map(({ title, cards }, index) => `
+      <section class="camera-group" aria-labelledby="camera-group-${index}">
+        <h3 class="camera-group-title" id="camera-group-${index}">${title}</h3>
+        <div class="camera-group-cards">${cards.join("")}</div>
       </section>`).join("");
   }
 
@@ -149,10 +142,8 @@ async function renderParent(main) {
     }
 
     const studentMarkup = children.map((child) => `<li class="parent-student">
-      <span class="student-initials" aria-hidden="true">${h(app.initials(child.fullName))}</span>
-      <div><strong>${h(child.fullName)}</strong>
-        <p class="small muted">${child.status === "active" ? "Lớp " + h(child.className || child.classId) : "Đã nghỉ học"}</p>
-      </div>
+      <strong>${h(child.fullName)}</strong>
+      <p>${child.status === "active" ? "Lớp " + h(child.className || child.classId) : "Đã nghỉ học"}</p>
     </li>`).join("");
     if (studentMarkup !== lastStudentMarkup) {
       studentList.innerHTML = studentMarkup;
