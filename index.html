@@ -36,16 +36,16 @@
           <span class="badge">Bản demo</span>
         </div>
         <section class="login-content" aria-labelledby="login-title">
-          <h1 id="login-title">Cổng camera học đường</h1>
-          <p class="muted login-intro">Đăng nhập để mở cổng phụ huynh hoặc trang quản trị.</p>
+          <h1 id="login-title">Đăng nhập</h1>
+          <p class="muted login-intro">Dùng tài khoản phụ huynh hoặc quản trị để mở cổng camera học đường.</p>
           <form id="login-form">
             <div class="login-field">
               <label for="username">Tên đăng nhập</label>
-              <input class="field" id="username" name="username" autocomplete="username" required>
+              <input class="field" id="username" name="username" autocomplete="username" aria-describedby="login-error" required>
             </div>
             <div class="login-field">
               <label for="password">Mật khẩu</label>
-              <input class="field" id="password" name="password" type="password" autocomplete="current-password" required>
+              <input class="field" id="password" name="password" type="password" autocomplete="current-password" aria-describedby="login-error" required>
             </div>
             <p id="login-error" class="error" role="alert"></p>
             <button class="button login-submit" type="submit">Đăng nhập</button>
@@ -57,8 +57,7 @@
           </details>
         </section>
         <div class="login-note small muted">
-          <p>Bài tập thiết kế web theo bối cảnh Trường Song ngữ Lạc Hồng.</p>
-          <p>Hồ sơ, hình ảnh và video là dữ liệu mẫu.</p>
+          <p>Hồ sơ và video trên cổng này là dữ liệu mẫu.</p>
         </div>
       </div>
       <div class="login-photo" aria-hidden="true"></div>

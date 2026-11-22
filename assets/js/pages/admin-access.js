@@ -21,31 +21,33 @@ function metric(label, value, detail) {
 
 function renderAdminOverview(main, data) {
   const active = data.students.filter((student) => student.active).length;
-  const online = data.cameras.filter((camera) => camera.online).length;
+  const online = data.cameras.filter((camera) => camera.enabled !== false && camera.online).length;
   main.innerHTML = `
-    <div class="screen-heading"><h1>Tổng quan quản trị</h1><p>Theo dõi thiết bị và quyền truy cập theo lớp.</p></div>
-    <div class="metric-grid">
-      ${metric("Lớp học", data.classes.length, "Danh sách lớp mẫu")}
-      ${metric("Học sinh đang học", active, `${data.students.length} hồ sơ học sinh`)}
-      ${metric("Tài khoản phụ huynh", data.parents.length, "Quyền tự động theo lớp")}
-      ${metric("Camera hoạt động", online, `${data.cameras.length - online} camera ngoại tuyến`)}
+    <div class="screen-heading heading-actions">
+      <div><h1>Tổng quan quản trị</h1><p>Quản lý thiết bị và quyền xem camera theo lớp.</p></div>
+      <a class="button" href="#/quan-tri/tra-cuu">Tra cứu quyền</a>
     </div>
-    <section class="panel overview-workflow">
-      <div>
-        <h2>Quyền xem theo lớp</h2>
-        <p class="muted">Gán camera cho lớp. Khi cập nhật lớp hoặc trạng thái học, hệ thống tính lại quyền của phụ huynh.</p>
-      </div>
-      <div class="role-actions">
-        <a class="button" href="#/quan-tri/dong-bo">Đối soát quyền</a>
-        <a class="button button-secondary" href="${app.html(lookupHref(data.parents[0]?.id, data.cameras[0]?.id))}">Tra cứu quyền</a>
-        <a class="button button-secondary" href="#/quan-tri/lop-hoc">Cập nhật lớp học</a>
-        <a class="button button-secondary" href="#/quan-tri/camera">Quản lý camera</a>
+    <section class="panel overview-metrics" aria-label="Dữ liệu tổng quan">
+      <div class="metric-grid">
+        ${metric("Lớp học", data.classes.length, "Lớp trong danh mục")}
+        ${metric("Học sinh đang học", active, `${data.students.length} hồ sơ học sinh`)}
+        ${metric("Tài khoản phụ huynh", data.parents.length, `${data.parents.filter((parent) => parent.accessEnabled === false).length} tài khoản đã khóa quyền`)}
+        ${metric("Camera hoạt động", online, `${data.cameras.length} thiết bị trong danh mục`)}
       </div>
     </section>
-    <section class="screen-section">
-      <div class="section-bar"><h2>Thay đổi gần đây</h2><a href="#/quan-tri/lich-su">Xem nhật ký</a></div>
-      ${activityList(data.activity.slice(0, 2))}
-    </section>`;
+    <div class="overview-workspace">
+      <section class="panel overview-workflow" aria-labelledby="admin-tasks">
+        <h2 id="admin-tasks">Quản lý quyền theo lớp</h2>
+        <a href="#/quan-tri/dong-bo"><strong>Đối soát quyền</strong><span class="small muted">Xem tác động trước khi áp dụng thay đổi hồ sơ</span></a>
+        <a href="#/quan-tri/lop-hoc"><strong>Học sinh & lớp</strong><span class="small muted">Cập nhật lớp và trạng thái học</span></a>
+        <a href="#/quan-tri/camera"><strong>Danh mục camera</strong><span class="small muted">Gán camera và kiểm tra tình trạng thiết bị</span></a>
+        <a href="#/quan-tri/tai-khoan"><strong>Tài khoản demo</strong><span class="small muted">Quản lý liên kết học sinh và quyền của phụ huynh</span></a>
+      </section>
+      <section class="overview-activity" aria-labelledby="admin-recent">
+        <div class="section-bar"><h2 id="admin-recent">Thay đổi gần đây</h2><a href="#/quan-tri/lich-su">Xem nhật ký</a></div>
+        ${activityList(data.activity.slice(0, 2))}
+      </section>
+    </div>`;
 }
 
 async function renderSchoolSync(main) {
@@ -179,55 +181,151 @@ function lookupHref(parentId, cameraId) {
   return search ? `#/quan-tri/tra-cuu?${search}` : "#/quan-tri/tra-cuu";
 }
 
-async function renderAccessLookup(main, data, query) {
+function pickerMarkup(id, label, placeholder) {
+  return `
+    <div class="record-picker" id="${app.html(id)}-picker">
+      <label for="${app.html(id)}">${app.html(label)}</label>
+      <input class="field" id="${app.html(id)}" type="search" placeholder="${app.html(placeholder)}" autocomplete="off" aria-controls="${app.html(id)}-results">
+      <p class="picker-current small" hidden></p>
+      <div class="picker-results" id="${app.html(id)}-results" hidden>
+        <p class="small muted picker-feedback" role="status"></p>
+        <ul class="picker-options"></ul>
+      </div>
+    </div>`;
+}
+
+function bindPicker(picker, records, onSelect, include = () => true) {
+  const input = picker.querySelector("input");
+  const form = picker.closest("form");
+  const results = picker.querySelector(".picker-results");
+  const feedback = picker.querySelector(".picker-feedback");
+  const options = picker.querySelector(".picker-options");
   const h = app.html;
-  const options = (items) => items.map(({ id, name }) => `<option value="${h(id)}">${h(name)} · ${h(id)}</option>`).join("");
+  const index = records.map((record) => ({
+    record,
+    keywords: adminSearch([record.title, record.detail, record.keywords].join(" "))
+  }));
+  const byId = new Map(records.map((record) => [record.id, record]));
+  const limit = 6;
+
+  function search() {
+    const terms = adminSearch(input.value).split(/\s+/);
+    const matches = index.filter(({ record, keywords }) =>
+      include(record) && terms.every((term) => keywords.includes(term))
+    );
+    for (const panel of form.querySelectorAll(".picker-results")) panel.hidden = panel !== results;
+    feedback.textContent = matches.length > limit
+      ? `${matches.length} kết quả. Hiện ${limit} mục, nhập thêm để thu hẹp.`
+      : matches.length ? `${matches.length} kết quả` : "Không tìm thấy kết quả.";
+    options.innerHTML = matches.slice(0, limit).map(({ record }) => `
+      <li><button type="button" data-picker-option="${h(record.id)}">
+        <strong>${h(record.title)}</strong><span class="small muted">${h(record.detail)}</span>
+      </button></li>`).join("");
+  }
+
+  input.addEventListener("focus", search);
+  input.addEventListener("input", search);
+  input.addEventListener("click", () => { if (results.hidden) search(); });
+  form.addEventListener("click", (event) => {
+    if (!picker.contains(event.target)) results.hidden = true;
+  });
+  picker.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !results.hidden) {
+      event.preventDefault();
+      event.stopPropagation();
+      input.value = "";
+      input.focus();
+      results.hidden = true;
+    }
+    if (event.target !== input) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (results.hidden) search();
+      options.querySelector("button")?.focus();
+    }
+    if (event.key === "Enter" && !results.hidden) {
+      event.preventDefault();
+      options.querySelector("button")?.click();
+    }
+  });
+  options.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-picker-option]");
+    if (!button) return;
+    onSelect(byId.get(button.dataset.pickerOption));
+    input.value = "";
+    input.focus();
+    results.hidden = true;
+  });
+
+  return input;
+}
+
+async function renderAccessLookup(main, data, query) {
+  const parents = data.parents.map((parent) => ({
+    id: parent.id, title: parent.name, detail: `${parent.id} · ${parent.username || parent.email}`
+  }));
+  const cameras = data.cameras.map((camera) => ({
+    id: camera.id, title: camera.name, detail: `${camera.id} · ${camera.location}`,
+    keywords: camera.classIds.join(" ")
+  }));
   main.innerHTML = `
     <div class="screen-heading">
       <h1>Tra cứu quyền</h1>
       <p>Kiểm tra căn cứ cấp quyền và khả năng phát video cho một phụ huynh.</p>
     </div>
     <section class="panel lookup-panel" aria-labelledby="lookup-form-heading">
-      <h2 id="lookup-form-heading">Chọn phụ huynh và camera</h2>
+      <h2 id="lookup-form-heading">Phụ huynh và camera</h2>
       <form id="lookup-form" class="lookup-form">
-        <label for="lookup-parent"><span>Phụ huynh</span>
-          <select id="lookup-parent" class="field field-select" name="parentId" required>
-            <option value="">Chọn phụ huynh</option>${options(data.parents)}
-          </select>
-        </label>
-        <label for="lookup-camera"><span>Camera</span>
-          <select id="lookup-camera" class="field field-select" name="cameraId" required>
-            <option value="">Chọn camera</option>${options(data.cameras)}
-          </select>
-        </label>
+        ${pickerMarkup("lookup-parent", "Phụ huynh", "Tên, mã hoặc email")}
+        ${pickerMarkup("lookup-camera", "Camera", "Tên, mã hoặc vị trí")}
         <button id="lookup-submit" class="button" type="submit" disabled>Tra cứu</button>
       </form>
-      <p id="lookup-status" class="small muted" role="status" data-state="idle">Chọn một phụ huynh và một camera để bắt đầu.</p>
+      <p id="lookup-status" class="small muted" role="status" data-state="idle"></p>
     </section>
     <section id="lookup-result" class="panel lookup-panel lookup-result" aria-labelledby="lookup-result-heading" hidden></section>`;
 
   const form = main.querySelector("#lookup-form");
-  const parent = main.querySelector("#lookup-parent");
-  const camera = main.querySelector("#lookup-camera");
+  const parentPicker = main.querySelector("#lookup-parent-picker");
+  const cameraPicker = main.querySelector("#lookup-camera-picker");
   const submit = main.querySelector("#lookup-submit");
   const status = main.querySelector("#lookup-status");
   const result = main.querySelector("#lookup-result");
-  const selectedParent = query.get("parentId");
-  const selectedCamera = query.get("cameraId");
+  let parent = parents.find((record) => record.id === query.get("parentId"));
+  let camera = cameras.find((record) => record.id === query.get("cameraId"));
 
   function setStatus(state, message) {
     status.dataset.state = state;
     status.textContent = message;
   }
 
+  function showSelection() {
+    for (const [picker, choice] of [[parentPicker, parent], [cameraPicker, camera]]) {
+      const current = picker.querySelector(".picker-current");
+      current.textContent = choice ? `${choice.title} · ${choice.id}` : "Chưa chọn";
+      current.hidden = false;
+    }
+    result.hidden = true;
+    submit.disabled = !parent || !camera;
+    setStatus("idle", submit.disabled ? "Chọn một phụ huynh và một camera để bắt đầu." : "Chọn Tra cứu để xem kết quả.");
+  }
+
+  const parentInput = bindPicker(parentPicker, parents, (record) => {
+    parent = record;
+    showSelection();
+  });
+  const cameraInput = bindPicker(cameraPicker, cameras, (record) => {
+    camera = record;
+    showSelection();
+  });
+
   async function inspectSelection() {
     result.hidden = true;
-    parent.disabled = true;
-    camera.disabled = true;
+    parentInput.disabled = true;
+    cameraInput.disabled = true;
     submit.disabled = true;
     setStatus("loading", "Đang kiểm tra quyền xem…");
     try {
-      const report = await service.inspectCameraAccess(parent.value, camera.value);
+      const report = await service.inspectCameraAccess(parent.id, camera.id);
       if (!main.isConnected) return;
       result.innerHTML = renderAccessReport(report);
       result.hidden = false;
@@ -235,31 +333,24 @@ async function renderAccessLookup(main, data, query) {
     } catch (error) {
       setStatus("error", error.message || "Tra cứu gặp lỗi. Hãy thử lại.");
     } finally {
-      parent.disabled = false;
-      camera.disabled = false;
+      parentInput.disabled = false;
+      cameraInput.disabled = false;
       submit.disabled = false;
     }
   }
 
-  form.addEventListener("change", () => {
-    result.hidden = true;
-    submit.disabled = !parent.value || !camera.value;
-    setStatus("idle", submit.disabled ? "Chọn một phụ huynh và một camera để bắt đầu." : "Chọn Tra cứu để xem kết quả.");
-  });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     if (submit.disabled) return;
-    const target = lookupHref(parent.value, camera.value);
+    const target = lookupHref(parent.id, camera.id);
     if (location.hash !== target) history.replaceState(history.state, "", target);
     inspectSelection();
   });
 
-  parent.value = selectedParent || "";
-  camera.value = selectedCamera || "";
-  submit.disabled = !parent.value || !camera.value;
-  if ((query.has("parentId") && !parent.value) || (query.has("cameraId") && !camera.value)) {
+  showSelection();
+  if ((query.has("parentId") && !parent) || (query.has("cameraId") && !camera)) {
     setStatus("error", "Liên kết chứa mã phụ huynh hoặc camera không hợp lệ. Chọn lại để tra cứu.");
-  } else if (!submit.disabled) {
+  } else if (parent && camera) {
     await inspectSelection();
   }
 }
@@ -337,11 +428,18 @@ function renderAdminStudents(main, data) {
   const filter = main.querySelector("#record-filter");
   const tiles = [...main.querySelectorAll(".class-tile")];
   const list = main.querySelector("#record-list");
+  const parentsByStudent = new Map();
+  for (const parent of data.parents) {
+    for (const id of parent.studentIds) {
+      if (!parentsByStudent.has(id)) parentsByStudent.set(id, []);
+      parentsByStudent.get(id).push(parent);
+    }
+  }
   function update() {
     const query = adminSearch(search.value);
     const students = data.students.map((student) => ({
       ...student,
-      parents: data.parents.filter((parent) => parent.studentIds.includes(student.id))
+      parents: parentsByStudent.get(student.id) || []
     })).filter((student) =>
       (!filter.value || student.classId === filter.value) &&
       adminSearch([student.name, student.id, student.classId, ...student.parents.map((parent) => parent.name)].join(" ")).includes(query)
@@ -469,83 +567,193 @@ function renderAdminAccounts(main, data) {
   const h = app.html;
   main.innerHTML = `
     <div class="screen-heading heading-actions">
-      <div><h1>Tài khoản demo</h1><p>Quản lý hồ sơ phụ huynh mẫu và liên kết học sinh.</p></div>
+      <div><h1>Tài khoản demo</h1><p>Quản lý phụ huynh và học sinh liên kết với từng tài khoản.</p></div>
       <button class="button" type="button" id="add-account">Tạo tài khoản</button>
     </div>
-    <section class="panel records-panel">
-      <div class="section-bar"><h2>Phụ huynh</h2><span class="badge">${data.parents.length} tài khoản</span></div>
-      <div class="accounts-list">${data.parents.map((parent) => {
-        const view = data.parentSummaries.find((item) => item.parent.id === parent.id);
-        return `<article class="account-row">
-          <div class="account-identity">
-            <span class="account-avatar" aria-hidden="true">${h(app.initials(parent.name))}</span>
-            <div><h3>${h(parent.name)}</h3><p class="small muted">${h(parent.username || parent.email)}</p></div>
-          </div>
-          <div class="account-connections"><p class="small">${view.students.map((student) => h(student.name)).join(", ") || "Chưa liên kết học sinh"}</p><p class="muted small">${view.cameras.length} camera được cấp</p></div>
-          <div class="account-actions">
-            <a class="button button-secondary record-action" href="${h(lookupHref(parent.id, view.cameras[0]?.id || data.cameras[0]?.id))}" aria-label="Tra cứu quyền của ${h(parent.name)}">Tra cứu quyền</a>
-            <button class="button button-secondary record-action" data-lock-account="${h(parent.id)}">${parent.accessEnabled === false ? "Mở quyền" : "Khóa quyền"}</button>
-            <button class="button button-secondary record-action" data-edit-account="${h(parent.id)}">Sửa</button>
-          </div>
-        </article>`;
-      }).join("")}</div>
+    <section class="panel records-panel" aria-labelledby="accounts-heading">
+      <div class="section-bar">
+        <div><h2 id="accounts-heading">Phụ huynh</h2><p class="small muted" id="account-count" role="status"></p></div>
+        <label class="account-search"><span class="sr-only">Tìm tài khoản</span><input class="field" id="account-search" type="search" placeholder="Tìm theo tên, email hoặc mã"></label>
+      </div>
+      <div class="accounts-list"></div>
+      <nav class="account-pages" aria-label="Trang tài khoản" hidden>
+        <button class="button button-secondary" type="button" id="account-prev">Trang trước</button>
+        <span class="small muted" id="account-page" role="status"></span>
+        <button class="button button-secondary" type="button" id="account-next">Trang sau</button>
+      </nav>
     </section>`;
-  main.querySelector("#add-account").addEventListener("click", () => editParentAccount(data));
-  main.querySelector(".accounts-list").addEventListener("click", (event) => {
+  const search = main.querySelector("#account-search");
+  const list = main.querySelector(".accounts-list");
+  const count = main.querySelector("#account-count");
+  const pages = main.querySelector(".account-pages");
+  const previous = main.querySelector("#account-prev");
+  const next = main.querySelector("#account-next");
+  const pageSize = 16;
+  let page = 0;
+
+  function update() {
+    const terms = adminSearch(search.value).split(/\s+/);
+    const parents = data.parents.filter((parent) => {
+      const text = adminSearch([parent.name, parent.id, parent.username, parent.email].join(" "));
+      return terms.every((term) => text.includes(term));
+    });
+    const pageCount = Math.ceil(parents.length / pageSize);
+    page = Math.max(0, Math.min(page, pageCount - 1));
+    count.textContent = `${parents.length} tài khoản`;
+    pages.hidden = pageCount < 2;
+    previous.disabled = page === 0;
+    next.disabled = page >= pageCount - 1;
+    main.querySelector("#account-page").textContent = `${page + 1} / ${pageCount}`;
+    const summaries = new Map(data.parentSummaries.map((view) => [view.parent.id, view]));
+    list.innerHTML = parents.length ? `
+      <table class="record-table account-table">
+        <thead><tr><th scope="col">Tài khoản</th><th scope="col">Học sinh liên kết</th><th scope="col">Quyền xem</th><th scope="col">Thao tác</th></tr></thead>
+        <tbody>${parents.slice(page * pageSize, (page + 1) * pageSize).map(row).join("")}</tbody>
+      </table>` : '<p class="empty-panel muted">Không tìm thấy tài khoản phù hợp.</p>';
+
+    function row(parent) {
+      const view = summaries.get(parent.id);
+      const students = view.students.slice(0, 2).map((student) => h(student.name)).join(", ");
+      const extra = view.students.length - 2;
+      const open = parent.accessEnabled !== false;
+      return `<tr class="account-row">
+        <th scope="row"><div class="account-identity">
+          <span class="account-avatar" aria-hidden="true">${h(app.initials(parent.name))}</span>
+          <div><strong>${h(parent.name)}</strong><p class="small muted">${h(parent.username || parent.email)} · ${h(parent.id)}</p></div>
+        </div></th>
+        <td data-label="Học sinh">${students || "Chưa liên kết"}${extra > 0 ? ` và ${extra} học sinh khác` : ""}</td>
+        <td data-label="Quyền xem"><span class="badge badge-status badge-${open ? "online" : "offline"}">${open ? "Đang mở" : "Đã khóa"}</span><p class="small muted">${view.cameras.length} camera</p></td>
+        <td><div class="account-actions">
+          <a class="button button-secondary record-action" href="${h(lookupHref(parent.id, view.cameras[0]?.id || data.cameras[0]?.id))}" aria-label="Tra cứu quyền của ${h(parent.name)}">Tra cứu</a>
+          <button type="button" class="button button-secondary record-action" data-lock-account="${h(parent.id)}">${open ? "Khóa quyền" : "Mở quyền"}</button>
+          <button type="button" class="button button-secondary record-action" data-edit-account="${h(parent.id)}" aria-label="Sửa ${h(parent.name)}">Sửa</button>
+        </div></td>
+      </tr>`;
+    }
+  }
+
+  async function refresh(selector, id) {
+    const updated = await service.getAdminOverview();
+    if (!main.isConnected) return;
+    data = updated;
+    update();
+    const control = [...list.querySelectorAll(selector)].find((button) => button.getAttribute(selector.slice(1, -1)) === id);
+    (control || search).focus();
+  }
+
+  search.addEventListener("input", () => {
+    page = 0;
+    update();
+  });
+  previous.addEventListener("click", () => { page--; update(); if (previous.disabled) next.focus(); });
+  next.addEventListener("click", () => { page++; update(); if (next.disabled) previous.focus(); });
+  main.querySelector("#add-account").addEventListener("click", () => editParentAccount(data, null, (id) => refresh("[data-edit-account]", id)));
+  list.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit-account]");
     const lock = event.target.closest("[data-lock-account]");
-    if (edit) editParentAccount(data, data.parents.find((parent) => parent.id === edit.dataset.editAccount));
-    if (lock) confirmParentAccess(data.parents.find((parent) => parent.id === lock.dataset.lockAccount));
+    if (edit) editParentAccount(data, data.parents.find((parent) => parent.id === edit.dataset.editAccount), (id) => refresh("[data-edit-account]", id));
+    if (lock) confirmParentAccess(data.parents.find((parent) => parent.id === lock.dataset.lockAccount), (id) => refresh("[data-lock-account]", id));
   });
+  update();
 }
 
-function confirmParentAccess(parent) {
+function confirmParentAccess(parent, refresh) {
   const enable = parent.accessEnabled === false;
   const dialog = app.showDialog(enable ? "Mở quyền xem" : "Khóa quyền xem", `
     <p>${app.html(parent.name)} · ${enable ? "Quyền sẽ tính lại từ các lớp đang học." : "Tài khoản này sẽ mất quyền xem camera. Các phụ huynh khác vẫn giữ quyền theo lớp."}</p>
+    <p class="error" role="alert"></p>
     <div class="dialog-footer"><button type="button" id="confirm-account-access" class="button">Xác nhận</button></div>`);
-  dialog.querySelector("#confirm-account-access").addEventListener("click", async () => {
+  const confirm = dialog.querySelector("#confirm-account-access");
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
     try {
       await service.setParentAccess(parent.id, enable);
       dialog.close();
-      await app.render(false);
+      await refresh(parent.id);
       app.flash(enable ? "Đã mở quyền xem." : "Đã khóa quyền xem.");
-    } catch (failure) { app.flash(failure.message); }
+    } catch (failure) {
+      if (dialog.open) dialog.querySelector(".error").textContent = failure.message;
+      else app.flash(failure.message);
+    } finally {
+      confirm.disabled = false;
+    }
   });
 }
 
-function editParentAccount(data, parent) {
+function editParentAccount(data, parent, refresh) {
   const h = app.html;
+  const classes = new Map(data.classes.map((item) => [item.id, item.name]));
+  const records = data.students.map((student) => ({
+    id: student.id,
+    title: student.name,
+    detail: `${student.id} · ${classes.get(student.classId) || student.classId || "Chưa xếp lớp"} · ${student.active ? "Đang học" : "Đã nghỉ học"}`
+  }));
+  const byId = new Map(records.map((record) => [record.id, record]));
+  const selected = new Set(parent?.studentIds || []);
   const dialog = app.showDialog(parent ? "Chỉnh sửa tài khoản mẫu" : "Tạo tài khoản mẫu", `
     <form id="account-edit">
       <div class="account-fields">
         <label class="dialog-field"><span>Họ và tên</span><input class="field" name="name" required maxlength="80" value="${h(parent?.name)}"></label>
         <label class="dialog-field"><span>Email mẫu</span><input class="field" name="email" type="email" required maxlength="120" placeholder="phuhuynh@example.test" value="${h(parent?.email)}"></label>
       </div>
-      <fieldset class="camera-class-options account-students">
+      <fieldset class="student-link-editor">
         <legend>Học sinh liên kết</legend>
-        ${data.students.map((student) => `<label>
-          <input type="checkbox" name="students" value="${h(student.id)}" ${parent?.studentIds.includes(student.id) ? "checked" : ""}>
-          ${h(student.name)} · ${h(student.classId)}
-        </label>`).join("")}
+        <p class="small muted">Quyền xem được tính từ lớp của học sinh đang học.</p>
+        ${pickerMarkup("student-picker", "Tìm học sinh để liên kết", "Tên, mã hoặc lớp")}
+        <p id="linked-count" class="small muted" role="status"></p>
+        <ul class="selected-students"></ul>
       </fieldset>
       <p class="error" id="account-error" role="alert"></p>
       <div class="dialog-footer"><button class="button" type="submit">Lưu tài khoản</button></div>
     </form>`);
+  dialog.querySelector(".dialog-heading button").textContent = "Hủy";
   const form = dialog.querySelector("#account-edit");
+  const save = form.querySelector('[type="submit"]');
+  const linked = form.querySelector(".selected-students");
+  const error = form.querySelector("#account-error");
+  const input = bindPicker(form.querySelector("#student-picker-picker"), records, (record) => {
+    selected.add(record.id);
+    showLinked();
+  }, (record) => !selected.has(record.id));
+
+  function showLinked() {
+    form.querySelector("#linked-count").textContent = selected.size ? `${selected.size} học sinh đã liên kết` : "Chưa liên kết học sinh.";
+    linked.hidden = !selected.size;
+    linked.innerHTML = [...selected].map((id) => {
+      const record = byId.get(id);
+      return `<li>
+        <div><strong>${h(record?.title || id)}</strong><p class="small muted">${h(record?.detail || id)}</p></div>
+        <button class="button button-secondary record-action" type="button" data-remove-student="${h(id)}" aria-label="Bỏ liên kết ${h(record?.title || id)}">Bỏ</button>
+      </li>`;
+    }).join("");
+  }
+
+  linked.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-student]");
+    if (!button) return;
+    selected.delete(button.dataset.removeStudent);
+    showLinked();
+    input.focus();
+  });
+  showLinked();
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (save.disabled) return;
+    save.disabled = true;
+    error.textContent = "";
     const values = new FormData(form);
     try {
       const result = await service.saveParentAccount({
-        id: parent?.id, name: values.get("name"), email: values.get("email"), studentIds: values.getAll("students")
+        id: parent?.id, name: values.get("name"), email: values.get("email"), studentIds: [...selected]
       });
       dialog.close();
-      await app.render(false);
-      app.root.querySelector(`[data-edit-account="${result.id}"]`)?.focus();
+      await refresh(result.id);
       app.flash(result.persisted ? "Đã lưu tài khoản trên trình duyệt này." : "Tài khoản đã lưu tạm trong phiên đang mở.");
     } catch (failure) {
-      dialog.querySelector("#account-error").textContent = failure.message;
+      if (dialog.open) error.textContent = failure.message;
+      else app.flash(failure.message);
+    } finally {
+      save.disabled = false;
     }
   });
 }

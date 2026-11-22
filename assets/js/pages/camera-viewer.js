@@ -2,6 +2,7 @@
 
 async function renderViewer(main, cameraId) {
   const h = app.html;
+  main.classList.add("viewer-page");
   const back = '<a class="back-route" href="#/phu-huynh">Về camera trường học</a>';
   function renderError(message) {
     main.innerHTML = `${back}<section class="panel empty-panel" role="status"><h1>${h(message)}</h1>
@@ -34,7 +35,7 @@ async function renderViewer(main, cameraId) {
       <div class="viewer-stage">
         <video id="camera-player" controls muted playsinline loop preload="metadata" aria-label="Video mẫu cho ${h(camera.name)}" hidden></video>
         <video id="device-player" controls muted playsinline aria-label="Webcam máy này" hidden></video>
-        <span class="viewer-media-label" id="media-label">Video diễn tập</span>
+        <span class="viewer-media-label" id="media-label">Video mẫu</span>
         <p class="viewer-stage-message" id="viewer-stage-message" aria-hidden="true" hidden></p>
       </div>
       <figcaption>
@@ -147,7 +148,7 @@ async function renderViewer(main, cameraId) {
     caption.hidden = !canPlay;
     label.hidden = !usingDevice && !usingDemo;
     sourceDescription.hidden = label.hidden;
-    label.textContent = usingDevice ? "Webcam máy này" : "Video diễn tập";
+    label.textContent = usingDevice ? "Webcam máy này" : "Video mẫu";
     sourceDescription.textContent = usingDevice ? "Hình ảnh trực tiếp trên thiết bị này." : "Clip quay mẫu được lưu trên máy.";
 
     if (usingDevice) {

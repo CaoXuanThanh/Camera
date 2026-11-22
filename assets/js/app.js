@@ -185,6 +185,8 @@ const app = {
       button.addEventListener("click", async () => {
         closeMenu();
         await service.logout();
+        clearTimeout(this.flashTimer);
+        this.notice.textContent = "";
         location.hash = "/";
       });
     }
@@ -193,6 +195,23 @@ const app = {
         closeMenu();
         this.confirmReset();
       });
+    }
+
+    if (!admin && (area === "camera" || area === "ho-so")) {
+      const portal = this.root.querySelector(".portal");
+      portal.classList.add("parent-flow");
+      const header = portal.querySelector(".portal-top");
+      const brand = portal.querySelector(".portal-side .brand");
+      const wordmark = document.createElement("span");
+      wordmark.textContent = brand.textContent.trim();
+      brand.replaceChildren(brand.querySelector(".brand-mark"), wordmark);
+      const identity = document.createElement("div");
+      identity.className = "parent-identity";
+      identity.append(brand, locationLabel);
+      header.prepend(identity);
+      if (area === "ho-so") avatar.hidden = true;
+      else avatar.textContent = "Hồ sơ";
+      header.querySelector(".portal-session").append(portal.querySelector("#side-role"));
     }
 
     const main = this.root.querySelector("#main-content");

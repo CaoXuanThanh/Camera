@@ -12,6 +12,9 @@ Một hồ sơ trình duyệt sạch giúp tái hiện đúng dữ liệu mặc 
 | Có quyền nhưng ngoại tuyến | Đăng nhập `nam@example.test`. **Sân sinh hoạt khu B** vẫn có trong danh sách với trạng thái **Ngoại tuyến**. Viewer báo chưa thể phát. Trong **Tra cứu quyền** ở tab Quản trị, kiểm tra cùng cặp phụ huynh và camera. Kết quả báo có quyền qua lớp 4A1. |
 | Thu hồi khi hồ sơ đổi | Với Trang, mở 3A1. Trong Quản trị, mở **Đối soát quyền**, xác nhận lô chuyển Minh Anh sang 3A2 và áp dụng. Viewer tab phụ huynh dừng phát, bỏ nguồn cũ và hiện thông báo thu hồi. Về Dashboard để xác nhận 3A2 và hành lang vẫn còn. |
 | Dashboard tự cập nhật | Khôi phục dữ liệu, giữ tab Trang ở Dashboard và áp dụng lại lô tại tab Quản trị. 3A1 tự rời danh sách. Kiểm tra nhật ký ghi thay đổi. |
-| Bố cục | Kiểm tra Đăng nhập, Dashboard, Viewer, Hồ sơ và Quản trị ở 390×844 và 1366×768. Nội dung nằm trong viewport ngang, đọc được nhãn và bấm được nút chính. |
+| Tìm và tra cứu | Tìm `tran hoang nam` ở Tài khoản demo. Trong Tra cứu quyền, tìm và chọn phụ huynh theo mã hoặc email, rồi chọn camera theo tên hoặc vị trí. Thử liên kết tra cứu với mã không tồn tại. |
+| Sửa liên kết, lưu và hủy | Thêm HS001 vào tài khoản Nam, rồi hủy và mở lại để xác nhận dữ liệu cũ. Lặp lại và lưu, tra cứu quyền của Nam với 3A1. Bỏ HS001, lưu và tra cứu lại để thấy kết quả thu hồi. |
+| Hồ sơ | Nhập email và số điện thoại sai. Form chỉ rõ từng lỗi và giữ phần đã nhập. Hủy thay đổi để về giá trị đã lưu. Sửa số hợp lệ, lưu và tải lại. |
+| Bố cục và bàn phím | Kiểm tra Đăng nhập, Dashboard, Viewer, Hồ sơ và tất cả trang Quản trị ở 375×812, 390×844, 768×1024 và 1366×768. Thử Tab, Enter và Escape trong drawer, tìm kiếm và hộp thoại. |
 
 Đối chiếu kết quả và mã lỗi với [hợp đồng dữ liệu](data-contract.md).

@@ -25,6 +25,8 @@ Viewer dùng `camera.studentsWithAccess` để hiện các học sinh tạo quy�
 
 ## Dữ liệu tra cứu quyền
 
+Giao diện quản trị đọc dữ liệu từ `getAdminOverview()`. Ô chọn phụ huynh, camera và học sinh tìm trên tập dữ liệu đã nhận, hiển thị tối đa sáu kết quả và dùng ID làm giá trị được chọn. Danh sách tài khoản phân trang local. Khi nối API, phần tải kết quả có thể chuyển sang truy vấn và phân trang phía máy chủ trong khi giữ ID, nhãn và phần thông tin phân biệt.
+
 | Trường | Cấu trúc hoặc ý nghĩa |
 | --- | --- |
 | `parent` | `{ id, displayName, accessEnabled }` |
